@@ -1,9 +1,10 @@
-package aurora
+package static
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/tuannguyensn2001/aurora-go/core"
 	"os"
 	"strings"
 
@@ -12,10 +13,10 @@ import (
 
 type staticStorage struct {
 	filePath string
-	config   map[string]parameter
+	config   map[string]core.Parameter
 }
 
-func NewStaticStorage(filePath string) *staticStorage {
+func NewStorage(filePath string) *staticStorage {
 
 	return &staticStorage{
 		filePath: filePath,
@@ -29,7 +30,7 @@ func (s *staticStorage) start(ctx context.Context) error {
 		return err
 	}
 	defer f.Close()
-	var config map[string]parameter
+	var config map[string]core.Parameter
 	if strings.HasSuffix(s.filePath, ".yaml") {
 		err = yaml.NewDecoder(f).Decode(&config)
 		if err != nil {
@@ -48,10 +49,10 @@ func (s *staticStorage) start(ctx context.Context) error {
 
 	return nil
 }
-func (s *staticStorage) getParameterConfig(ctx context.Context, parameterName string) (parameter, error) {
+func (s *staticStorage) getParameterConfig(ctx context.Context, parameterName string) (core.Parameter, error) {
 	val, ok := s.config[parameterName]
 	if !ok {
-		return parameter{}, errors.New("parameter not found")
+		return core.Parameter{}, errors.New("parameter not found")
 	}
 
 	return val, nil

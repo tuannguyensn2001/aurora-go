@@ -1,4 +1,4 @@
-package aurora
+package core
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 )
 
 type iStorage interface {
-	getParameterConfig(ctx context.Context, parameterName string) (parameter, error)
+	getParameterConfig(ctx context.Context, parameterName string) (Parameter, error)
 	start(ctx context.Context) error
 }
 

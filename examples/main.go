@@ -3,15 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/tuannguyensn2001/aurora-go/core"
+	"github.com/tuannguyensn2001/aurora-go/storage/static"
 	"log"
 	"log/slog"
-
-	"github.com/tuannguyensn2001/aurora-go"
 )
 
 func main() {
-	storage := aurora.NewStaticStorage("examples/parameters.yaml")
-	client := aurora.NewClient(storage, aurora.ClientOptions{
+	storage := static.NewStorage("parameters.yaml")
+	client := core.NewClient(storage, core.ClientOptions{
 		Logger: slog.Default().With("aurora"),
 	})
 	err := client.Start(context.Background())
@@ -20,7 +20,7 @@ func main() {
 	}
 
 	for i := 0; i < 10; i++ {
-		attribute := aurora.NewAttribute()
+		attribute := core.NewAttribute()
 		attribute.Set("subscription_plan", "premium")
 		attribute.Set("userID", fmt.Sprintf("user_%d", i))
 		resolvedValue := client.GetParameter(context.Background(), "numberOfAttempts", attribute)

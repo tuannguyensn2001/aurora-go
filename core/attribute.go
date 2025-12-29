@@ -1,4 +1,4 @@
-package aurora
+package core
 
 type attribute struct {
 	vals map[string]any

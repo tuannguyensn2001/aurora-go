@@ -1,4 +1,4 @@
-package aurora
+package core
 
 type resolvedValue struct {
 	value   any

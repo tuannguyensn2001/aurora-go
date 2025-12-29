@@ -1,19 +1,19 @@
-package aurora
+package core
 
-type parameter struct {
+type Parameter struct {
 	DefaultValue interface{} `yaml:"defaultValue"`
-	Rules        []rule      `yaml:"rules"`
+	Rules        []Rule      `yaml:"rules"`
 }
 
-type rule struct {
+type Rule struct {
 	RolloutValue  interface{}  `yaml:"rolloutValue"`
 	Percentage    *int         `yaml:"percentage,omitempty"`
 	HashAttribute *string      `yaml:"hashAttribute,omitempty"`
 	EffectiveAt   *int64       `yaml:"effectiveAt,omitempty"`
-	Constraints   []constraint `yaml:"constraints"`
+	Constraints   []Constraint `yaml:"constraints"`
 }
 
-type constraint struct {
+type Constraint struct {
 	Field    string      `yaml:"field"`
 	Operator string      `yaml:"operator"`
 	Value    interface{} `yaml:"value"`

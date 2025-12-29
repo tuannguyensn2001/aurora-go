@@ -1,4 +1,4 @@
-package aurora
+package core
 
 import (
 	"context"
@@ -38,7 +38,7 @@ func (e *engine) bootstrap() {
 	e.registerOperator(NotIn, notInOperator)
 }
 
-func (e *engine) evaluateParameter(ctx context.Context, parameterName string, parameter parameter, attribute *attribute) *resolvedValue {
+func (e *engine) evaluateParameter(ctx context.Context, parameterName string, parameter Parameter, attribute *attribute) *resolvedValue {
 	for _, rule := range parameter.Rules {
 		match := e.evaluateRule(ctx, parameterName, rule, attribute)
 		if match {
@@ -48,7 +48,7 @@ func (e *engine) evaluateParameter(ctx context.Context, parameterName string, pa
 	return NewResolvedValue(parameter.DefaultValue, false)
 }
 
-func (e *engine) evaluateRule(ctx context.Context, parameterName string, rule rule, attribute *attribute) bool {
+func (e *engine) evaluateRule(ctx context.Context, parameterName string, rule Rule, attribute *attribute) bool {
 	// Check if rule is effective (time-based check)
 	if rule.EffectiveAt != nil {
 		currentTime := time.Now().Unix()
