@@ -6,7 +6,7 @@ import (
 )
 
 type iStorage interface {
-	getParameterConfig(ctx context.Context, parameterName string) (Parameter, error)
+	GetParameterConfig(ctx context.Context, parameterName string) (Parameter, error)
 	start(ctx context.Context) error
 }
 
@@ -48,7 +48,7 @@ func (c *client) Start(ctx context.Context) error {
 }
 
 func (c *client) GetParameter(ctx context.Context, parameterName string, attribute *attribute, opts ...parameterOption) *resolvedValue {
-	parameter, err := c.storage.getParameterConfig(ctx, parameterName)
+	parameter, err := c.storage.GetParameterConfig(ctx, parameterName)
 	if err != nil {
 		c.logger.Error("failed to get parameter from storage", "error", err)
 		return NewResolvedValue(nil, false)
