@@ -1,0 +1,38 @@
+enableAuth:
+  defaultValue: false
+  rules:
+    - rolloutValue: true
+      percentage: 100
+      hashAttribute: userID
+      effectiveAt: 1767018971
+      constraints:
+        - field: country
+          operator: equal
+          value: VN
+        - field: age
+          operator: greaterThan
+          value: 18
+    - rolloutValue: true
+      constraints:
+        - field: age
+          operator: lessThan
+          value: 20
+
+numberOfAttempts:
+    defaultValue: 1
+    rules:
+      - rolloutValue: 5
+        percentage: 50
+        hashAttribute: userID
+        constraints:
+          - field: subscription_plan
+            operator: equal
+            value: premium
+      - rolloutValue: 50
+        constraints:
+          - field: subscription_plan
+            operator: equal
+            value: VIP
+          - field: country
+            operator: equal
+            value: SG
