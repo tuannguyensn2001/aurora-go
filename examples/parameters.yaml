@@ -36,3 +36,17 @@ numberOfAttempts:
           - field: country
             operator: equal
             value: SG
+
+# Example parameter using custom operators
+customOperatorTest:
+  defaultValue: false
+  rules:
+    # This rule uses the custom "startsWith" operator
+    - rolloutValue: true
+      constraints:
+        - field: email
+          operator: startsWith
+          value: admin
+        - field: count
+          operator: modulo
+          value: 5
