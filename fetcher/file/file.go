@@ -14,17 +14,20 @@ import (
 // Fetcher fetches configuration from a local file.
 type fetcher struct {
 	filePath string
+	static   bool
 }
 
 // Options configures the Fetcher.
 type Options struct {
 	FilePath string
+	Static   bool
 }
 
 // NewFetcher creates a new file-based Fetcher.
 func New(opts Options) *fetcher {
 	return &fetcher{
 		filePath: opts.FilePath,
+		static:   opts.Static,
 	}
 }
 
@@ -54,5 +57,5 @@ func (f *fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, e
 }
 
 func (f *fetcher) IsStatic() bool {
-	return true
+	return f.static
 }
