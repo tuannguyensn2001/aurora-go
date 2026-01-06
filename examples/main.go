@@ -5,15 +5,23 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"os"
 
 	aurora "github.com/tuannguyensn2001/aurora-go"
-	"github.com/tuannguyensn2001/aurora-go/storage/static"
+	filefetcher "github.com/tuannguyensn2001/aurora-go/fetcher/file"
 )
 
 func main() {
-	storage := static.NewStorage("parameters.yaml")
-	client := aurora.NewClient(storage, aurora.ClientOptions{
-		Logger: slog.Default().With("aurora"),
+	// storage := static.NewStorage(static.Options{
+	// 	FilePath: "parameters.yaml",
+	// })
+	opts := &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}
+	client := aurora.NewClient(aurora.NewStorage(filefetcher.New(filefetcher.Options{
+		FilePath: "parameters.yaml",
+	})), aurora.ClientOptions{
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, opts)),
 	})
 	err := client.Start(context.Background())
 	if err != nil {

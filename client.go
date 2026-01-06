@@ -3,17 +3,10 @@ package core
 import (
 	"context"
 	"log/slog"
-
-	"github.com/tuannguyensn2001/aurora-go/auroratype"
 )
 
-type iStorage interface {
-	GetParameterConfig(ctx context.Context, parameterName string) (auroratype.Parameter, error)
-	Start(ctx context.Context) error
-}
-
 type client struct {
-	storage iStorage
+	storage *storage
 	engine  *engine
 	logger  *slog.Logger
 }
@@ -22,7 +15,7 @@ type ClientOptions struct {
 	Logger *slog.Logger
 }
 
-func NewClient(storage iStorage, opts ClientOptions) *client {
+func NewClient(storage *storage, opts ClientOptions) *client {
 	logger := slog.Default()
 	if opts.Logger != nil {
 		logger = opts.Logger
