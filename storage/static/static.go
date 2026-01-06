@@ -4,16 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/tuannguyensn2001/aurora-go/core"
 	"os"
 	"strings"
 
+	"github.com/tuannguyensn2001/aurora-go/auroratype"
 	"gopkg.in/yaml.v2"
 )
 
 type staticStorage struct {
 	filePath string
-	config   map[string]core.Parameter
+	config   map[string]auroratype.Parameter
 }
 
 func NewStorage(filePath string) *staticStorage {
@@ -23,14 +23,14 @@ func NewStorage(filePath string) *staticStorage {
 	}
 }
 
-func (s *staticStorage) start(ctx context.Context) error {
+func (s *staticStorage) Start(ctx context.Context) error {
 
 	f, err := os.Open(s.filePath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	var config map[string]core.Parameter
+	var config map[string]auroratype.Parameter
 	if strings.HasSuffix(s.filePath, ".yaml") {
 		err = yaml.NewDecoder(f).Decode(&config)
 		if err != nil {
@@ -49,10 +49,10 @@ func (s *staticStorage) start(ctx context.Context) error {
 
 	return nil
 }
-func (s *staticStorage) getParameterConfig(ctx context.Context, parameterName string) (core.Parameter, error) {
+func (s *staticStorage) GetParameterConfig(ctx context.Context, parameterName string) (auroratype.Parameter, error) {
 	val, ok := s.config[parameterName]
 	if !ok {
-		return core.Parameter{}, errors.New("parameter not found")
+		return auroratype.Parameter{}, errors.New("parameter not found")
 	}
 
 	return val, nil

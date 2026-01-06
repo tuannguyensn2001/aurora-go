@@ -1,4 +1,4 @@
-package core
+package auroratype
 
 type Parameter struct {
 	DefaultValue interface{} `yaml:"defaultValue"`

@@ -3,11 +3,13 @@ package core
 import (
 	"context"
 	"log/slog"
+
+	"github.com/tuannguyensn2001/aurora-go/auroratype"
 )
 
 type iStorage interface {
-	GetParameterConfig(ctx context.Context, parameterName string) (Parameter, error)
-	start(ctx context.Context) error
+	GetParameterConfig(ctx context.Context, parameterName string) (auroratype.Parameter, error)
+	Start(ctx context.Context) error
 }
 
 type client struct {
@@ -39,7 +41,7 @@ type parameterOpts struct {
 type parameterOption func(*parameterOpts)
 
 func (c *client) Start(ctx context.Context) error {
-	err := c.storage.start(ctx)
+	err := c.storage.Start(ctx)
 	if err != nil {
 		return err
 	}
