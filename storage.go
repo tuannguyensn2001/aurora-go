@@ -14,6 +14,7 @@ type storage struct {
 	fetcher  Fetcher
 	interval time.Duration
 	strategy Storage
+	recorder MetricsRecorder
 }
 
 func WithStorage(strategy Storage) func(storage *storage) {
@@ -28,12 +29,19 @@ func WithInterval(interval time.Duration) func(opts *storage) {
 	}
 }
 
+func WithMetricsRecorder(recorder MetricsRecorder) func(opts *storage) {
+	return func(opts *storage) {
+		opts.recorder = recorder
+	}
+}
+
 // NewWrapperStorage creates a new WrapperStorage that combines fetching and storage strategies.
 func NewStorage(fetcher Fetcher, opts ...func(opts *storage)) *storage {
 	storage := &storage{
 		fetcher:  fetcher,
 		interval: 1 * time.Minute,
 		strategy: memory.NewStrategy(),
+		recorder: NewNoopRecorder(),
 	}
 
 	for _, opt := range opts {
@@ -45,12 +53,10 @@ func NewStorage(fetcher Fetcher, opts ...func(opts *storage)) *storage {
 
 // Start initializes the storage by fetching data and starting background polling.
 func (w *storage) Start(ctx context.Context) error {
-	// Initial fetch and save
 	if err := w.sync(ctx); err != nil {
 		return err
 	}
 
-	// Start background polling
 	if w.fetcher.IsStatic() {
 		return nil
 	}
@@ -63,10 +69,18 @@ func (w *storage) Start(ctx context.Context) error {
 func (w *storage) sync(ctx context.Context) error {
 	config, err := w.fetcher.Fetch(ctx)
 	if err != nil {
+		w.recorder.Count(MetricStorageSyncTotal, 1, []string{"status:error"})
 		return err
 	}
 
-	return w.strategy.Save(ctx, config)
+	err = w.strategy.Save(ctx, config)
+	if err != nil {
+		w.recorder.Count(MetricStorageSyncTotal, 1, []string{"status:error"})
+		return err
+	}
+
+	w.recorder.Count(MetricStorageSyncTotal, 1, []string{"status:success"})
+	return nil
 }
 
 func (w *storage) poll(ctx context.Context) {

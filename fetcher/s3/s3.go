@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -12,42 +13,72 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const (
+	MetricS3FetchLatency = "s3_fetch_latency"
+	MetricS3FetchTotal   = "s3_fetch_total"
+)
+
+type MetricsRecorder interface {
+	Count(metricName string, count int, tags []string)
+	Histogram(metricName string, value float64, tags []string)
+}
+
 // Fetcher fetches configuration from an S3 bucket.
 type Fetcher struct {
-	client *s3.Client
-	bucket string
-	key    string
+	client   *s3.Client
+	bucket   string
+	key      string
+	recorder MetricsRecorder
 }
 
 // Options configures the S3 Fetcher.
 type Options struct {
-	Client *s3.Client
-	Bucket string
-	Key    string
+	Client          *s3.Client
+	Bucket          string
+	Key             string
+	MetricsRecorder MetricsRecorder
 }
 
 // NewFetcher creates a new S3-based Fetcher.
 func NewFetcher(opts Options) *Fetcher {
+	recorder := opts.MetricsRecorder
+	if recorder == nil {
+		recorder = &noopRecorder{}
+	}
 	return &Fetcher{
-		client: opts.Client,
-		bucket: opts.Bucket,
-		key:    opts.Key,
+		client:   opts.Client,
+		bucket:   opts.Bucket,
+		key:      opts.Key,
+		recorder: recorder,
 	}
 }
 
+type noopRecorder struct{}
+
+func (n *noopRecorder) Count(metricName string, count int, tags []string)         {}
+func (n *noopRecorder) Histogram(metricName string, value float64, tags []string) {}
+
 // Fetch retrieves configuration data from S3.
 func (f *Fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, error) {
+	start := time.Now()
+	defer func() {
+		duration := float64(time.Since(start).Nanoseconds())
+		f.recorder.Histogram(MetricS3FetchLatency, duration, nil)
+	}()
+
 	output, err := f.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(f.bucket),
 		Key:    aws.String(f.key),
 	})
 	if err != nil {
+		f.recorder.Count(MetricS3FetchTotal, 1, []string{"status:error"})
 		return nil, err
 	}
 	defer output.Body.Close()
 
 	data, err := io.ReadAll(output.Body)
 	if err != nil {
+		f.recorder.Count(MetricS3FetchTotal, 1, []string{"status:error"})
 		return nil, err
 	}
 
@@ -59,9 +90,11 @@ func (f *Fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, e
 	}
 
 	if err != nil {
+		f.recorder.Count(MetricS3FetchTotal, 1, []string{"status:error"})
 		return nil, err
 	}
 
+	f.recorder.Count(MetricS3FetchTotal, 1, []string{"status:success"})
 	return config, nil
 }
 

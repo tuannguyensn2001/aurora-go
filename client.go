@@ -3,13 +3,15 @@ package core
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
 )
 
 // ClientOptions contains configuration options for the Client.
 type ClientOptions struct {
-	Logger *slog.Logger
+	Logger          *slog.Logger
+	MetricsRecorder MetricsRecorder
 }
 
 // ParameterOption is a functional option for GetParameter.
@@ -36,9 +38,10 @@ func WithStrategy(s Storage) ParameterOption {
 // Client is the main entry point for Aurora configuration management.
 // It provides methods to retrieve parameters and register custom operators.
 type Client struct {
-	storage *storage
-	engine  *engine
-	logger  *slog.Logger
+	storage  *storage
+	engine   *engine
+	logger   *slog.Logger
+	recorder MetricsRecorder
 }
 
 // NewClient creates a new Aurora client with the given storage and options.
@@ -51,10 +54,16 @@ func NewClient(storage *storage, opts ClientOptions) *Client {
 		logger = slog.Default()
 	}
 
+	recorder := opts.MetricsRecorder
+	if recorder == nil {
+		recorder = NewNoopRecorder()
+	}
+
 	return &Client{
-		storage: storage,
-		engine:  engine,
-		logger:  logger,
+		storage:  storage,
+		engine:   engine,
+		logger:   logger,
+		recorder: recorder,
 	}
 }
 
@@ -75,11 +84,22 @@ func (c *Client) Start(ctx context.Context) error {
 func (c *Client) GetParameter(ctx context.Context, parameterName string, attribute *attribute, opts ...ParameterOption) *resolvedValue {
 	c.logger.Debug("Getting parameter", "parameter", parameterName)
 
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start).Nanoseconds()
+		c.recorder.Histogram("get_parameter_latency", float64(duration), []string{})
+	}()
+
 	var paramOpts parameterOptions
 	if len(opts) > 0 {
 		for _, opt := range opts {
 			opt(&paramOpts)
 		}
+	}
+
+	storageTag := "default"
+	if paramOpts.strategy != nil {
+		storageTag = "custom"
 	}
 
 	var config auroratype.Parameter
@@ -93,10 +113,19 @@ func (c *Client) GetParameter(ctx context.Context, parameterName string, attribu
 
 	if err != nil {
 		c.logger.Error("Failed to get parameter config", "parameter", parameterName, "error", err)
+		c.recorder.Count("get_parameter", 1, []string{"status:not_found", "storage:" + storageTag})
 		return NewResolvedValue(nil, false)
 	}
 
-	return c.engine.evaluateParameter(ctx, parameterName, config, attribute)
+	result := c.engine.evaluateParameter(ctx, parameterName, config, attribute)
+
+	if result.matched {
+		c.recorder.Count("get_parameter", 1, []string{"status:resolved", "storage:" + storageTag})
+	} else {
+		c.recorder.Count("get_parameter", 1, []string{"status:fallback", "storage:" + storageTag})
+	}
+
+	return result
 }
 
 // RegisterOperator allows users to register a custom operator.

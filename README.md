@@ -11,6 +11,7 @@ Feature flags and parameter configuration for Go applications. Inspired by AWS A
 - [Configuration](#configuration)
 - [Usage Examples](#usage-examples)
 - [Fetchers](#fetchers)
+- [Observability](#observability)
 - [API Reference](#api-reference)
 - [Examples](#examples)
 - [Deep Dive](#deep-dive)
@@ -172,6 +173,188 @@ fetcher := s3.New(ctx, s3.Config{
 })
 // Automatically polls for updates
 ```
+
+## Observability
+
+Aurora-Go provides built-in metrics support through the `MetricsRecorder` interface. Track the health and performance of your feature flag system.
+
+### Metrics Reference
+
+| Metric | Type | Tags | Description |
+|--------|------|------|-------------|
+| `get_parameter` | counter | `status`, `storage` | Count of GetParameter calls |
+| `get_parameter_latency` | histogram | - | GetParameter latency in nanoseconds |
+| `s3_fetch_latency` | histogram | - | S3 fetch latency in nanoseconds |
+| `s3_fetch_total` | counter | `status` | S3 fetch count (success/error) |
+| `storage_sync_total` | counter | `status` | Storage sync count (success/error) |
+| `storage_save_latency` | histogram | - | Storage save latency in nanoseconds |
+| `storage_get_latency` | histogram | - | Storage get latency in nanoseconds |
+| `storage_get_total` | counter | `status` | Storage get count (hit/miss) |
+
+### Status Values
+
+| Status | Description |
+|--------|-------------|
+| `resolved` | Parameter found, rule matched |
+| `fallback` | Parameter found, no rules matched, using default |
+| `not_found` | Parameter not found in storage |
+| `success` | Operation completed successfully |
+| `error` | Operation failed |
+| `hit` | Parameter found in cache |
+| `miss` | Parameter not found in cache |
+
+### MetricsRecorder Interface
+
+Implement this interface to integrate with your observability backend:
+
+```go
+type MetricsRecorder interface {
+    Count(metricName string, count int, tags []string)
+    Histogram(metricName string, value float64, tags []string)
+}
+```
+
+### Client with Metrics
+
+```go
+type myRecorder struct{}
+
+func (m *myRecorder) Count(metricName string, count int, tags []string) {
+    // Send count metric to your observability backend
+    fmt.Printf("Count: %s %d %v\n", metricName, count, tags)
+}
+
+func (m *myRecorder) Histogram(metricName string, value float64, tags []string) {
+    // Send histogram metric to your observability backend
+    fmt.Printf("Histogram: %s %f %v\n", metricName, value, tags)
+}
+
+func main() {
+    fetcher := file.New("/path/to/config.yaml")
+    storage := core.NewStorage(fetcher)
+
+    client := core.NewClient(storage, core.ClientOptions{
+        MetricsRecorder: &myRecorder{},
+    })
+
+    result := client.GetParameter(ctx, "featureX", attrs)
+    _ = result.Boolean(false)
+}
+```
+
+### S3 Fetcher with Metrics
+
+```go
+import "github.com/tuannguyensn2001/aurora-go/fetcher/s3"
+
+s3Fetcher := s3.New(s3.Options{
+    Client:         s3Client,
+    Bucket:         "my-bucket",
+    Key:            "config/parameters.yaml",
+    MetricsRecorder: &myRecorder{},
+})
+
+storage := core.NewStorage(s3Fetcher)
+```
+
+### Storage with Metrics
+
+```go
+storage := core.NewStorage(fetcher,
+    core.WithMetricsRecorder(&myRecorder{}),
+    core.WithInterval(30*time.Second),
+)
+```
+
+### Prometheus Example
+
+```go
+import (
+    "github.com/prometheus/client_golang/prometheus"
+    "github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+type prometheusRecorder struct {
+    getParameterCounter   *prometheus.CounterVec
+    getParameterHistogram prometheus.Histogram
+}
+
+func newPrometheusRecorder() *prometheusRecorder {
+    return &prometheusRecorder{
+        getParameterCounter: promauto.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "aurora_get_parameter_total",
+                Help: "Total number of GetParameter calls",
+            },
+            []string{"status", "storage"},
+        ),
+        getParameterHistogram: promauto.NewHistogram(
+            prometheus.HistogramOpts{
+                Name:    "aurora_get_parameter_latency_ns",
+                Help:    "Latency of GetParameter in nanoseconds",
+                Buckets: prometheus.ExponentialBuckets(1_000, 10, 12),
+            },
+        ),
+    }
+}
+
+func (p *prometheusRecorder) Count(metricName string, count int, tags []string) {
+    if metricName != "get_parameter" {
+        return
+    }
+    labels := make(prometheus.Labels)
+    for _, tag := range tags {
+        parts := strings.SplitN(tag, ":", 2)
+        if len(parts) == 2 {
+            labels[parts[0]] = parts[1]
+        }
+    }
+    p.getParameterCounter.With(labels).Add(float64(count))
+}
+
+func (p *prometheusRecorder) Histogram(metricName string, value float64, tags []string) {
+    if metricName != "get_parameter_latency" {
+        return
+    }
+    p.getParameterHistogram.Observe(value)
+}
+```
+
+### Datadog Example
+
+```go
+import "github.com/DataDog/datadog-go/statsd"
+
+type datadogRecorder struct {
+    client *statsd.Client
+}
+
+func (d *datadogRecorder) Count(metricName string, count int, tags []string) {
+    d.client.Count(metricName, int64(count), tags, 1.0)
+}
+
+func (d *datadogRecorder) Histogram(metricName string, value float64, tags []string) {
+    d.client.Histogram(metricName, value, tags, 1.0)
+}
+
+func main() {
+    client, _ := statsd.New("127.0.0.1:8125")
+
+    storage := core.NewStorage(fetcher)
+    client := core.NewClient(storage, core.ClientOptions{
+        MetricsRecorder: &datadogRecorder{client: client},
+    })
+}
+```
+
+### Recommended Alerts
+
+| Metric | Alert | Threshold |
+|--------|-------|-----------|
+| `s3_fetch_total` with `status:error` | S3 fetch errors | > 0 |
+| `storage_sync_total` with `status:error` | Storage sync errors | > 0 |
+| `get_parameter_latency` p99 | GetParameter latency | > 100ms |
+| `storage_get_total` with `status:miss` rate | Cache miss rate | > 10% |
 
 ## Strong Consistency with Custom Storage
 
