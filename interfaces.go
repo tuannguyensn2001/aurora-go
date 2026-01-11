@@ -1,5 +1,8 @@
 package core
 
+//go:generate $GOPATH/bin/mockery --name=Fetcher
+//go:generate $GOPATH/bin/mockery --name=Storage
+
 import (
 	"context"
 

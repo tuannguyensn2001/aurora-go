@@ -1,0 +1,10 @@
+all: True
+with-expecter: True
+disable-version-string: True
+dir: mocks
+filename: mock_{{.InterfaceName}}.go
+packages:
+  github.com/tuannguyensn2001/aurora-go:
+    interfaces:
+      Fetcher: {}
+      Storage: {}
