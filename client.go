@@ -3,11 +3,34 @@ package core
 import (
 	"context"
 	"log/slog"
+
+	"github.com/tuannguyensn2001/aurora-go/auroratype"
 )
 
 // ClientOptions contains configuration options for the Client.
 type ClientOptions struct {
 	Logger *slog.Logger
+}
+
+// ParameterOption is a functional option for GetParameter.
+type ParameterOption func(*parameterOptions)
+
+type parameterOptions struct {
+	strategy Storage
+}
+
+// WithStrategy sets a custom storage strategy for retrieving the parameter.
+// This is useful for use cases requiring strong consistency
+// instead of the default eventually consistent storage.
+//
+// Example:
+//
+//	customStorage := myCustomStorage{}
+//	client.GetParameter(ctx, "key", nil, WithStrategy(customStorage))
+func WithStrategy(s Storage) ParameterOption {
+	return func(o *parameterOptions) {
+		o.strategy = s
+	}
 }
 
 // Client is the main entry point for Aurora configuration management.
@@ -43,10 +66,31 @@ func (c *Client) Start(ctx context.Context) error {
 
 // GetParameter retrieves a parameter value based on the given attributes.
 // It evaluates rules and constraints to determine the appropriate value.
-func (c *Client) GetParameter(ctx context.Context, parameterName string, attribute *attribute) *resolvedValue {
+//
+// By default, parameters are retrieved from the default storage (eventually consistent).
+// For strong consistency requirements, use WithStrategy to provide a custom storage:
+//
+//	customStorage := myCustomStorage{}
+//	client.GetParameter(ctx, "key", nil, WithStrategy(customStorage))
+func (c *Client) GetParameter(ctx context.Context, parameterName string, attribute *attribute, opts ...ParameterOption) *resolvedValue {
 	c.logger.Debug("Getting parameter", "parameter", parameterName)
 
-	config, err := c.storage.GetParameterConfig(ctx, parameterName)
+	var paramOpts parameterOptions
+	if len(opts) > 0 {
+		for _, opt := range opts {
+			opt(&paramOpts)
+		}
+	}
+
+	var config auroratype.Parameter
+	var err error
+
+	if paramOpts.strategy != nil {
+		config, err = paramOpts.strategy.Get(ctx, parameterName)
+	} else {
+		config, err = c.storage.GetParameterConfig(ctx, parameterName)
+	}
+
 	if err != nil {
 		c.logger.Error("Failed to get parameter config", "parameter", parameterName, "error", err)
 		return NewResolvedValue(nil, false)

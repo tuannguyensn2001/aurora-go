@@ -16,7 +16,7 @@ type storage struct {
 	strategy Storage
 }
 
-func WithStrategy(strategy Storage) func(storage *storage) {
+func WithStorage(strategy Storage) func(storage *storage) {
 	return func(storage *storage) {
 		storage.strategy = strategy
 	}

@@ -173,7 +173,65 @@ fetcher := s3.New(ctx, s3.Config{
 // Automatically polls for updates
 ```
 
-## API Reference
+## Strong Consistency with Custom Storage
+
+By default, Aurora-Go uses **eventual consistency** - parameters are cached in memory and refreshed periodically (default: 1 minute). This is efficient for most use cases.
+
+For **critical parameters requiring strong consistency**, you can provide a custom storage strategy at call time:
+
+```go
+// Define a custom storage that fetches directly from your config service
+type DirectStorage struct {
+    client *http.Client
+    url    string
+}
+
+func (s *DirectStorage) Get(ctx context.Context, key string) (auroratype.Parameter, error) {
+    // Fetch directly from your config server
+    req, err := http.NewRequestWithContext(ctx, "GET", s.url+"/"+key, nil)
+    if err != nil {
+        return auroratype.Parameter{}, err
+    }
+    resp, err := s.client.Do(req)
+    if err != nil {
+        return auroratype.Parameter{}, err
+    }
+    defer resp.Body.Close()
+
+    // Parse response into Parameter
+    var param auroratype.Parameter
+    decoder := json.NewDecoder(resp.Body)
+    decoder.Decode(&param)
+    return param, nil
+}
+
+func (s *DirectStorage) Save(ctx context.Context, params map[string]auroratype.Parameter) error {
+    // Not needed for direct access
+    return nil
+}
+
+// Usage: Use custom storage for specific parameters
+func getCriticalParameter(ctx context.Context, client *aurora.Client) {
+    directStorage := &DirectStorage{
+        client: &http.Client{Timeout: 5 * time.Second},
+        url:    "https://config.internal/parameters",
+    }
+
+    // This call bypasses the cache and fetches directly
+    result := client.GetParameter(ctx, "criticalConfig", attrs, aurora.WithStrategy(directStorage))
+}
+```
+
+**When to use custom storage:**
+
+| Use Case | Storage | Consistency |
+|----------|---------|-------------|
+| Feature flags (most cases) | Default (cached) | Eventual |
+| Runtime configuration | Custom (HTTP direct) | Strong |
+| Safety-critical values | Custom (database) | Strong |
+| Frequently changing values | Custom (real-time) | Strong |
+
+### API Reference
 
 ### NewClient
 
@@ -198,6 +256,29 @@ result := client.GetParameter(ctx, "parameterName", attrs)
 ```
 
 Retrieves a parameter value based on matching rules and user attributes.
+
+For strong consistency requirements, use `WithStrategy` to provide a custom storage:
+
+```go
+result := client.GetParameter(ctx, "criticalKey", attrs, WithStrategy(myCustomStorage))
+```
+
+### WithStrategy
+
+```go
+client.GetParameter(ctx, "key", attrs, WithStrategy(storage))
+```
+
+Provides a custom storage strategy for retrieving a parameter. Use this for strong consistency instead of the default eventually consistent storage.
+
+The storage must implement the `Storage` interface:
+
+```go
+type Storage interface {
+    Save(ctx context.Context, config map[string]auroratype.Parameter) error
+    Get(ctx context.Context, parameterName string) (auroratype.Parameter, error)
+}
+```
 
 ### RegisterOperator
 
