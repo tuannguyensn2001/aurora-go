@@ -1,6 +1,12 @@
 package core
 
-import "reflect"
+import (
+	"math"
+	"reflect"
+	"strings"
+)
+
+const epsilon = 1e-9
 
 type Operator string
 
@@ -66,7 +72,7 @@ func compareNumeric(va, vb reflect.Value) bool {
 	if !ok1 || !ok2 {
 		return false
 	}
-	return fa == fb
+	return math.Abs(fa-fb) < epsilon
 }
 
 // getFloat64 converts a reflect.Value to float64
@@ -169,7 +175,7 @@ func containsOperator(a, b any) bool {
 
 	// Handle string contains
 	if ta.Kind() == reflect.String && tb.Kind() == reflect.String {
-		return contains(va.String(), vb.String())
+		return strings.Contains(va.String(), vb.String())
 	}
 
 	// Handle slice/array contains
@@ -186,18 +192,7 @@ func containsOperator(a, b any) bool {
 
 // contains checks if string s contains substring substr
 func contains(s, substr string) bool {
-	if len(substr) == 0 {
-		return true
-	}
-	if len(s) < len(substr) {
-		return false
-	}
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
+	return strings.Contains(s, substr)
 }
 
 // inOperator checks if value a is in array/slice b

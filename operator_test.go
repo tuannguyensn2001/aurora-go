@@ -2,6 +2,7 @@ package core
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -310,6 +311,53 @@ func TestIsNumeric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := isNumeric(reflect.TypeOf(tt.value))
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFloatPointComparison(t *testing.T) {
+	tests := []struct {
+		name     string
+		a, b     any
+		expected bool
+	}{
+		{"float64 equal", 5.5, 5.5, true},
+		{"float64 very close", 5.5000000001, 5.5, true},
+		{"float64 different", 5.5, 6.5, false},
+		{"int and float equal", 5, 5.0, true},
+		{"int and float close", 5, 5.0000000001, true},
+		{"float32 equal", float32(5.5), float32(5.5), true},
+		{"float32 and float64 equal", float32(5.5), float64(5.5), true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			va := reflect.ValueOf(tt.a)
+			vb := reflect.ValueOf(tt.b)
+			result := compareNumeric(va, vb)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestUTF8StringContains(t *testing.T) {
+	tests := []struct {
+		name      string
+		s, substr string
+		expected  bool
+	}{
+		{"UTF-8 with accents", "café", "afé", true},
+		{"UTF-8 emoji", "hello👋world", "👋", true},
+		{"UTF-8 Chinese", "你好世界", "世界", true},
+		{"UTF-8 mixed", "hello世界", "世界", true},
+		{"UTF-8 not found", "café", "xyz", false},
+		{"empty substring", "café", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := strings.Contains(tt.s, tt.substr)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

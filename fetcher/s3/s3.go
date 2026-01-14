@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -62,8 +63,8 @@ func (n *noopRecorder) Histogram(metricName string, value float64, tags []string
 func (f *Fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, error) {
 	start := time.Now()
 	defer func() {
-		duration := float64(time.Since(start).Nanoseconds())
-		f.recorder.Histogram(MetricS3FetchLatency, duration, nil)
+		duration := float64(time.Since(start).Microseconds())
+		f.recorder.Histogram(MetricS3FetchLatency, duration, []string{"unit:microseconds"})
 	}()
 
 	output, err := f.client.GetObject(ctx, &s3.GetObjectInput{
@@ -83,7 +84,8 @@ func (f *Fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, e
 	}
 
 	var config map[string]auroratype.Parameter
-	if strings.HasSuffix(f.key, ".yaml") || strings.HasSuffix(f.key, ".yml") {
+	ext := strings.ToLower(filepath.Ext(f.key))
+	if ext == ".yaml" || ext == ".yml" {
 		err = yaml.Unmarshal(data, &config)
 	} else {
 		err = json.Unmarshal(data, &config)

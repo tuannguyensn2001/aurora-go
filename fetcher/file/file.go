@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
@@ -41,9 +42,10 @@ func (f *fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, e
 
 	var config map[string]auroratype.Parameter
 
-	if strings.HasSuffix(f.filePath, ".yaml") || strings.HasSuffix(f.filePath, ".yml") {
+	ext := strings.ToLower(filepath.Ext(f.filePath))
+	if ext == ".yaml" || ext == ".yml" {
 		err = yaml.NewDecoder(file).Decode(&config)
-	} else if strings.HasSuffix(f.filePath, ".json") {
+	} else if ext == ".json" {
 		err = json.NewDecoder(file).Decode(&config)
 	} else {
 		return nil, errors.New("unsupported file format: must be .yaml, .yml, or .json")

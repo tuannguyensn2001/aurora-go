@@ -18,6 +18,9 @@ type engine struct {
 func (e *engine) registerOperator(name Operator, fn func(a, b any) bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if fn == nil {
+		return
+	}
 	e.operators[name] = fn
 }
 
