@@ -190,11 +190,6 @@ func containsOperator(a, b any) bool {
 	return false
 }
 
-// contains checks if string s contains substring substr
-func contains(s, substr string) bool {
-	return strings.Contains(s, substr)
-}
-
 // inOperator checks if value a is in array/slice b
 func inOperator(a, b any) bool {
 	if a == nil || b == nil {

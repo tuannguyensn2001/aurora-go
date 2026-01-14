@@ -257,33 +257,6 @@ func TestNotInOperator(t *testing.T) {
 	}
 }
 
-func TestContainsHelper(t *testing.T) {
-	tests := []struct {
-		name      string
-		s, substr string
-		expected  bool
-	}{
-		{"contains", "hello world", "world", true},
-		{"does not contain", "hello world", "xyz", false},
-		{"empty substring", "hello", "", true},
-		{"substring at start", "hello", "hel", true},
-		{"substring at end", "hello", "llo", true},
-		{"substring in middle", "hello", "ell", true},
-		{"both empty", "", "", true},
-		{"empty main string", "", "a", false},
-		{"substring longer than main", "a", "ab", false},
-		{"single char", "abc", "b", true},
-		{"no match", "abcdef", "xyz", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := contains(tt.s, tt.substr)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestIsNumeric(t *testing.T) {
 	tests := []struct {
 		name     string

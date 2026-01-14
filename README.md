@@ -30,7 +30,7 @@ import (
 
 func main() {
 	fetcher := file.New("/path/to/parameters.yaml")
-	storage := aurora.NewStorage(fetcher)
+	storage := aurora.NewFetcherStorage(fetcher)
 	client := aurora.NewClient(storage, aurora.ClientOptions{})
 
 	if err := client.Start(context.Background()); err != nil {

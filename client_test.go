@@ -15,7 +15,7 @@ func TestNewClient(t *testing.T) {
 	mockFetcher.On("IsStatic").Return(true)
 	mockFetcher.On("Fetch", mock.Anything).Return(make(map[string]auroratype.Parameter), nil)
 
-	client := NewClient(NewStorage(mockFetcher), ClientOptions{})
+	client := NewClient(NewFetcherStorage(mockFetcher), ClientOptions{})
 
 	assert.NotNil(t, client)
 	assert.NotNil(t, client.engine)
@@ -39,7 +39,7 @@ func TestClientGetParameter(t *testing.T) {
 	mockFetcher.On("IsStatic").Return(true)
 	mockFetcher.On("Fetch", mock.Anything).Return(map[string]auroratype.Parameter{"test_param": param}, nil)
 
-	s := NewStorage(mockFetcher)
+	s := NewFetcherStorage(mockFetcher)
 	err := s.Start(context.Background())
 	assert.NoError(t, err)
 
@@ -71,7 +71,7 @@ func TestClientGetParameterStorageError(t *testing.T) {
 	mockFetcher.On("IsStatic").Return(true)
 	mockFetcher.On("Fetch", mock.Anything).Return(nil, assert.AnError)
 
-	s := NewStorage(mockFetcher)
+	s := NewFetcherStorage(mockFetcher)
 	err := s.Start(context.Background())
 	assert.Error(t, err)
 
@@ -89,7 +89,7 @@ func TestClientRegisterOperator(t *testing.T) {
 	mockFetcher.On("IsStatic").Return(true)
 	mockFetcher.On("Fetch", mock.Anything).Return(make(map[string]auroratype.Parameter), nil)
 
-	s := NewStorage(mockFetcher)
+	s := NewFetcherStorage(mockFetcher)
 	err := s.Start(context.Background())
 	assert.NoError(t, err)
 
@@ -122,7 +122,7 @@ func TestClientRegisterOperator(t *testing.T) {
 	mockFetcher2.On("IsStatic").Return(true)
 	mockFetcher2.On("Fetch", mock.Anything).Return(map[string]auroratype.Parameter{"test_param": param}, nil)
 
-	s2 := NewStorage(mockFetcher2)
+	s2 := NewFetcherStorage(mockFetcher2)
 	err = s2.Start(context.Background())
 	assert.NoError(t, err)
 	client2 := NewClient(s2, ClientOptions{})
@@ -159,7 +159,7 @@ func TestClientGetParameterWithDefaultValue(t *testing.T) {
 	mockFetcher.On("IsStatic").Return(true)
 	mockFetcher.On("Fetch", mock.Anything).Return(map[string]auroratype.Parameter{"test_param": param}, nil)
 
-	s := NewStorage(mockFetcher)
+	s := NewFetcherStorage(mockFetcher)
 	err := s.Start(context.Background())
 	assert.NoError(t, err)
 

@@ -10,34 +10,34 @@ import (
 
 // WrapperStorage combines a Fetcher and Storage to create a complete storage solution.
 // It fetches data from the Fetcher and stores it in the Storage.
-type storage struct {
+type fetcherStorage struct {
 	fetcher  Fetcher
 	interval time.Duration
 	strategy Storage
 	recorder MetricsRecorder
 }
 
-func WithStorage(strategy Storage) func(storage *storage) {
-	return func(storage *storage) {
-		storage.strategy = strategy
+func WithStorage(strategy Storage) func(s *fetcherStorage) {
+	return func(s *fetcherStorage) {
+		s.strategy = strategy
 	}
 }
 
-func WithInterval(interval time.Duration) func(opts *storage) {
-	return func(opts *storage) {
+func WithInterval(interval time.Duration) func(opts *fetcherStorage) {
+	return func(opts *fetcherStorage) {
 		opts.interval = interval
 	}
 }
 
-func WithMetricsRecorder(recorder MetricsRecorder) func(opts *storage) {
-	return func(opts *storage) {
+func WithMetricsRecorder(recorder MetricsRecorder) func(opts *fetcherStorage) {
+	return func(opts *fetcherStorage) {
 		opts.recorder = recorder
 	}
 }
 
 // NewWrapperStorage creates a new WrapperStorage that combines fetching and storage strategies.
-func NewStorage(fetcher Fetcher, opts ...func(opts *storage)) *storage {
-	storage := &storage{
+func NewFetcherStorage(fetcher Fetcher, opts ...func(opts *fetcherStorage)) *fetcherStorage {
+	storage := &fetcherStorage{
 		fetcher:  fetcher,
 		interval: 1 * time.Minute,
 		strategy: memory.NewStrategy(),
@@ -52,7 +52,7 @@ func NewStorage(fetcher Fetcher, opts ...func(opts *storage)) *storage {
 }
 
 // Start initializes the storage by fetching data and starting background polling.
-func (w *storage) Start(ctx context.Context) error {
+func (w *fetcherStorage) Start(ctx context.Context) error {
 	if err := w.sync(ctx); err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (w *storage) Start(ctx context.Context) error {
 	return nil
 }
 
-func (w *storage) sync(ctx context.Context) error {
+func (w *fetcherStorage) sync(ctx context.Context) error {
 	config, err := w.fetcher.Fetch(ctx)
 	if err != nil {
 		w.recorder.Count(MetricStorageSyncTotal, 1, []string{"status:error"})
@@ -83,7 +83,7 @@ func (w *storage) sync(ctx context.Context) error {
 	return nil
 }
 
-func (w *storage) poll(ctx context.Context) {
+func (w *fetcherStorage) poll(ctx context.Context) {
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
 
@@ -97,7 +97,7 @@ func (w *storage) poll(ctx context.Context) {
 	}
 }
 
-// GetParameterConfig retrieves a parameter from the storage.
-func (w *storage) GetParameterConfig(ctx context.Context, parameterName string) (auroratype.Parameter, error) {
+// Get retrieves a parameter from the storage.
+func (w *fetcherStorage) Get(ctx context.Context, parameterName string) (auroratype.Parameter, error) {
 	return w.strategy.Get(ctx, parameterName)
 }

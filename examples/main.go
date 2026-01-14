@@ -16,7 +16,7 @@ func main() {
 	opts := &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}
-	client := aurora.NewClient(aurora.NewStorage(filefetcher.New(filefetcher.Options{
+	client := aurora.NewClient(aurora.NewFetcherStorage(filefetcher.New(filefetcher.Options{
 		FilePath: "parameters.yaml",
 	})), aurora.ClientOptions{
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, opts)),
@@ -74,6 +74,5 @@ func main() {
 	attribute.Set("count", 10)
 	resolvedValue := client.GetParameter(context.Background(), "customOperatorTest", attribute)
 	fmt.Printf("Custom operator test result: %v\n", resolvedValue.Boolean(false))
-
 
 }

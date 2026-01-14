@@ -38,14 +38,14 @@ func WithStrategy(s Storage) ParameterOption {
 // Client is the main entry point for Aurora configuration management.
 // It provides methods to retrieve parameters and register custom operators.
 type Client struct {
-	storage  *storage
+	storage  *fetcherStorage
 	engine   *engine
 	logger   *slog.Logger
 	recorder MetricsRecorder
 }
 
 // NewClient creates a new Aurora client with the given storage and options.
-func NewClient(storage *storage, opts ClientOptions) *Client {
+func NewClient(storage *fetcherStorage, opts ClientOptions) *Client {
 	engine := newEngine()
 	engine.bootstrap()
 
@@ -108,7 +108,7 @@ func (c *Client) GetParameter(ctx context.Context, parameterName string, attribu
 	if paramOpts.strategy != nil {
 		config, err = paramOpts.strategy.Get(ctx, parameterName)
 	} else {
-		config, err = c.storage.GetParameterConfig(ctx, parameterName)
+		config, err = c.storage.Get(ctx, parameterName)
 	}
 
 	if err != nil {
