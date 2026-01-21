@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	MetricS3FetchLatency = "s3_fetch_latency"
-	MetricS3FetchTotal   = "s3_fetch_total"
+	MetricS3FetchLatency            = "s3_fetch_latency"
+	MetricS3FetchTotal              = "s3_fetch_total"
+	MetricS3FetchExperimentsLatency = "s3_fetch_experiments_latency"
+	MetricS3FetchExperimentsTotal   = "s3_fetch_experiments_total"
 )
 
 type MetricsRecorder interface {
@@ -26,10 +28,11 @@ type MetricsRecorder interface {
 
 // Fetcher fetches configuration from an S3 bucket.
 type Fetcher struct {
-	client   *s3.Client
-	bucket   string
-	key      string
-	recorder MetricsRecorder
+	client         *s3.Client
+	bucket         string
+	key            string
+	experimentsKey string
+	recorder       MetricsRecorder
 }
 
 // Options configures the S3 Fetcher.
@@ -37,6 +40,7 @@ type Options struct {
 	Client          *s3.Client
 	Bucket          string
 	Key             string
+	ExperimentsKey  string
 	MetricsRecorder MetricsRecorder
 }
 
@@ -47,10 +51,11 @@ func NewFetcher(opts Options) *Fetcher {
 		recorder = &noopRecorder{}
 	}
 	return &Fetcher{
-		client:   opts.Client,
-		bucket:   opts.Bucket,
-		key:      opts.Key,
-		recorder: recorder,
+		client:         opts.Client,
+		bucket:         opts.Bucket,
+		key:            opts.Key,
+		experimentsKey: opts.ExperimentsKey,
+		recorder:       recorder,
 	}
 }
 
@@ -75,9 +80,10 @@ func (f *Fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, e
 		f.recorder.Count(MetricS3FetchTotal, 1, []string{"status:error"})
 		return nil, err
 	}
-	defer output.Body.Close()
 
 	data, err := io.ReadAll(output.Body)
+	output.Body.Close()
+
 	if err != nil {
 		f.recorder.Count(MetricS3FetchTotal, 1, []string{"status:error"})
 		return nil, err
@@ -102,4 +108,45 @@ func (f *Fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, e
 
 func (f *Fetcher) IsStatic() bool {
 	return false
+}
+
+func (f *Fetcher) FetchExperiments(ctx context.Context) ([]auroratype.Experiment, error) {
+	if f.experimentsKey == "" {
+		return nil, nil
+	}
+
+	start := time.Now()
+	defer func() {
+		duration := float64(time.Since(start).Microseconds())
+		f.recorder.Histogram(MetricS3FetchExperimentsLatency, duration, []string{"unit:microseconds"})
+	}()
+
+	output, err := f.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(f.bucket),
+		Key:    aws.String(f.experimentsKey),
+	})
+	if err != nil {
+		f.recorder.Count(MetricS3FetchExperimentsTotal, 1, []string{"status:error"})
+		return nil, err
+	}
+
+	data, err := io.ReadAll(output.Body)
+	output.Body.Close()
+
+	if err != nil {
+		f.recorder.Count(MetricS3FetchExperimentsTotal, 1, []string{"status:error"})
+		return nil, err
+	}
+
+	var config struct {
+		Experiments []auroratype.Experiment `yaml:"experiments"`
+	}
+
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		f.recorder.Count(MetricS3FetchExperimentsTotal, 1, []string{"status:error"})
+		return nil, err
+	}
+
+	f.recorder.Count(MetricS3FetchExperimentsTotal, 1, []string{"status:success"})
+	return config.Experiments, nil
 }

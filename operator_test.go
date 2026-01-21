@@ -1,11 +1,11 @@
 package core
 
 import (
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tuannguyensn2001/aurora-go/core/evaluator"
 )
 
 func TestEqualOperator(t *testing.T) {
@@ -44,7 +44,7 @@ func TestEqualOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := equalOperator(tt.a, tt.b)
+			result := evaluator.EqualOp(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -65,7 +65,7 @@ func TestNotEqualOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := notEqualOperator(tt.a, tt.b)
+			result := evaluator.NotEqualOp(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -95,7 +95,7 @@ func TestGreaterThanOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := greaterThanOperator(tt.a, tt.b)
+			result := evaluator.GreaterThanOp(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -122,7 +122,7 @@ func TestLessThanOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := lessThanOperator(tt.a, tt.b)
+			result := evaluator.LessThanOp(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -146,7 +146,7 @@ func TestGreaterThanOrEqualOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := greaterThanOrEqualOperator(tt.a, tt.b)
+			result := evaluator.GreaterThanOrEqualOp(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -170,7 +170,7 @@ func TestLessThanOrEqualOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := lessThanOrEqualOperator(tt.a, tt.b)
+			result := evaluator.LessThanOrEqualOp(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -194,14 +194,14 @@ func TestContainsOperator(t *testing.T) {
 		{"slice contains string", []string{"a", "b", "c"}, "b", true},
 		{"empty slice", []int{}, 1, false},
 		{"slice with duplicates", []int{1, 2, 2, 3}, 2, true},
-		{"int vs int in slice", 5, 5, false}, // types don't match
+		{"int vs int in slice", 5, 5, false},
 		{"string vs int slice", "2", []int{1, 2, 3}, false},
-		{"slice of slices", [][]int{{1, 2}, {3, 4}}, []int{1, 2}, true}, // types match, deep equal works
+		{"slice of slices", [][]int{{1, 2}, {3, 4}}, []int{1, 2}, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := containsOperator(tt.a, tt.b)
+			result := evaluator.ContainsOp(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -230,7 +230,7 @@ func TestInOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := inOperator(tt.a, tt.b)
+			result := evaluator.InOp(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -251,64 +251,7 @@ func TestNotInOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := notInOperator(tt.a, tt.b)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestIsNumeric(t *testing.T) {
-	tests := []struct {
-		name     string
-		value    any
-		expected bool
-	}{
-		{"int", 5, true},
-		{"int8", int8(5), true},
-		{"int16", int16(5), true},
-		{"int32", int32(5), true},
-		{"int64", int64(5), true},
-		{"uint", uint(5), true},
-		{"uint8", uint8(5), true},
-		{"uint16", uint16(5), true},
-		{"uint32", uint32(5), true},
-		{"uint64", uint64(5), true},
-		{"float32", float32(5.0), true},
-		{"float64", 5.0, true},
-		{"string", "5", false},
-		{"bool", true, false},
-		{"slice", []int{1, 2}, false},
-		{"map", map[string]int{"a": 1}, false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := isNumeric(reflect.TypeOf(tt.value))
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestFloatPointComparison(t *testing.T) {
-	tests := []struct {
-		name     string
-		a, b     any
-		expected bool
-	}{
-		{"float64 equal", 5.5, 5.5, true},
-		{"float64 very close", 5.5000000001, 5.5, true},
-		{"float64 different", 5.5, 6.5, false},
-		{"int and float equal", 5, 5.0, true},
-		{"int and float close", 5, 5.0000000001, true},
-		{"float32 equal", float32(5.5), float32(5.5), true},
-		{"float32 and float64 equal", float32(5.5), float64(5.5), true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			va := reflect.ValueOf(tt.a)
-			vb := reflect.ValueOf(tt.b)
-			result := compareNumeric(va, vb)
+			result := evaluator.NotInOp(tt.a, tt.b)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

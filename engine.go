@@ -11,10 +11,10 @@ import (
 
 type engine struct {
 	mu        sync.Mutex
-	operators map[Operator]func(a, b any) bool
+	operators map[evaluator.Operator]func(a, b any) bool
 }
 
-func (e *engine) registerOperator(name Operator, fn func(a, b any) bool) {
+func (e *engine) registerOperator(name evaluator.Operator, fn func(a, b any) bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if fn == nil {
@@ -25,20 +25,20 @@ func (e *engine) registerOperator(name Operator, fn func(a, b any) bool) {
 
 func newEngine() *engine {
 	return &engine{
-		operators: make(map[Operator]func(a, b any) bool),
+		operators: make(map[evaluator.Operator]func(a, b any) bool),
 	}
 }
 
 func (e *engine) bootstrap() {
-	e.registerOperator(Equal, equalOperator)
-	e.registerOperator(NotEqual, notEqualOperator)
-	e.registerOperator(GreaterThan, greaterThanOperator)
-	e.registerOperator(LessThan, lessThanOperator)
-	e.registerOperator(GreaterThanOrEqual, greaterThanOrEqualOperator)
-	e.registerOperator(LessThanOrEqual, lessThanOrEqualOperator)
-	e.registerOperator(Contains, containsOperator)
-	e.registerOperator(In, inOperator)
-	e.registerOperator(NotIn, notInOperator)
+	e.registerOperator(evaluator.Equal, evaluator.EqualOp)
+	e.registerOperator(evaluator.NotEqual, evaluator.NotEqualOp)
+	e.registerOperator(evaluator.GreaterThan, evaluator.GreaterThanOp)
+	e.registerOperator(evaluator.LessThan, evaluator.LessThanOp)
+	e.registerOperator(evaluator.GreaterThanOrEqual, evaluator.GreaterThanOrEqualOp)
+	e.registerOperator(evaluator.LessThanOrEqual, evaluator.LessThanOrEqualOp)
+	e.registerOperator(evaluator.Contains, evaluator.ContainsOp)
+	e.registerOperator(evaluator.In, evaluator.InOp)
+	e.registerOperator(evaluator.NotIn, evaluator.NotInOp)
 }
 
 func (e *engine) evaluateParameter(ctx context.Context, parameterName string, parameter auroratype.Parameter, attribute *attribute) *resolvedValue {
@@ -60,7 +60,7 @@ func (e *engine) evaluateRule(ctx context.Context, parameterName string, rule au
 	}
 
 	for _, constraint := range rule.Constraints {
-		op := e.operators[Operator(constraint.Operator)]
+		op := e.operators[evaluator.Operator(constraint.Operator)]
 		if op == nil {
 			return false
 		}

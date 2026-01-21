@@ -17,12 +17,12 @@ type Evaluation struct {
 }
 
 type Engine struct {
-	operators map[string]evaluator.OperatorFunc
+	operators map[evaluator.Operator]func(a, b any) bool
 }
 
 func NewEngine() *Engine {
 	return &Engine{
-		operators: make(map[string]evaluator.OperatorFunc),
+		operators: make(map[evaluator.Operator]func(a, b any) bool),
 	}
 }
 

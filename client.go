@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
+	"github.com/tuannguyensn2001/aurora-go/core/evaluator"
 	"github.com/tuannguyensn2001/aurora-go/experiment"
 )
 
@@ -49,6 +50,10 @@ func NewClient(storage *fetcherStorage, opts ClientOptions) *Client {
 	recorder := opts.MetricsRecorder
 	if recorder == nil {
 		recorder = NewNoopRecorder()
+	}
+
+	if storage.logger == nil {
+		storage.logger = logger
 	}
 
 	return &Client{
@@ -135,5 +140,5 @@ func (c *Client) GetParameter(ctx context.Context, parameterName string, attribu
 
 func (c *Client) RegisterOperator(name string, fn func(a, b any) bool) {
 	c.logger.Info("Registering custom operator", "operator", name)
-	c.engine.registerOperator(Operator(name), fn)
+	c.engine.registerOperator(evaluator.Operator(name), fn)
 }

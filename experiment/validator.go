@@ -1,6 +1,8 @@
 package experiment
 
 import (
+	"fmt"
+
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
 )
 
@@ -95,7 +97,7 @@ func validateExperiment(exp auroratype.Experiment) []ValidationError {
 		if variant.Key == "" {
 			errors = append(errors, ValidationError{
 				Experiment: exp.ID,
-				Field:      "variants[" + string(rune('0'+i)) + "].key",
+				Field:      fmt.Sprintf("variants[%d].key", i),
 				Message:    "cannot be empty",
 			})
 		}
@@ -103,7 +105,7 @@ func validateExperiment(exp auroratype.Experiment) []ValidationError {
 		if variant.Rollout < 0 || variant.Rollout > 100 {
 			errors = append(errors, ValidationError{
 				Experiment: exp.ID,
-				Field:      "variants[" + string(rune('0'+i)) + "].rollout",
+				Field:      fmt.Sprintf("variants[%d].rollout", i),
 				Message:    "must be between 0 and 100",
 			})
 		}
@@ -111,7 +113,7 @@ func validateExperiment(exp auroratype.Experiment) []ValidationError {
 		if len(variant.Values) == 0 {
 			errors = append(errors, ValidationError{
 				Experiment: exp.ID,
-				Field:      "variants[" + string(rune('0'+i)) + "].values",
+				Field:      fmt.Sprintf("variants[%d].values", i),
 				Message:    "cannot be empty",
 			})
 		}
@@ -121,7 +123,52 @@ func validateExperiment(exp auroratype.Experiment) []ValidationError {
 		errors = append(errors, ValidationError{
 			Experiment: exp.ID,
 			Field:      "variants",
-			Message:    "total rollout must equal 100, got " + string(rune('0'+totalRollout)),
+			Message:    fmt.Sprintf("total rollout must equal 100, got %d", totalRollout),
+		})
+	}
+
+	for i, constraint := range exp.Constraints {
+		errors = append(errors, validateExperimentConstraint(exp.ID, i, constraint)...)
+	}
+
+	return errors
+}
+
+func validateExperimentConstraint(expID string, constraintIndex int, c auroratype.Constraint) []ValidationError {
+	var errors []ValidationError
+
+	if c.Field == "" {
+		errors = append(errors, ValidationError{
+			Experiment: expID,
+			Field:      fmt.Sprintf("constraints[%d].field", constraintIndex),
+			Message:    "cannot be empty",
+		})
+	}
+
+	if c.Operator == "" {
+		errors = append(errors, ValidationError{
+			Experiment: expID,
+			Field:      fmt.Sprintf("constraints[%d].operator", constraintIndex),
+			Message:    "cannot be empty",
+		})
+	}
+
+	validOperators := map[string]bool{
+		"equal":              true,
+		"notEqual":           true,
+		"greaterThan":        true,
+		"lessThan":           true,
+		"greaterThanOrEqual": true,
+		"lessThanOrEqual":    true,
+		"contains":           true,
+		"in":                 true,
+		"notIn":              true,
+	}
+	if c.Operator != "" && !validOperators[c.Operator] {
+		errors = append(errors, ValidationError{
+			Experiment: expID,
+			Field:      fmt.Sprintf("constraints[%d].operator", constraintIndex),
+			Message:    fmt.Sprintf("unknown operator: %s", c.Operator),
 		})
 	}
 

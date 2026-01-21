@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
@@ -9,10 +10,12 @@ import (
 )
 
 type fetcherStorage struct {
-	fetcher  Fetcher
-	interval time.Duration
-	strategy Storage
-	recorder MetricsRecorder
+	fetcher         Fetcher
+	interval        time.Duration
+	strategy        Storage
+	recorder        MetricsRecorder
+	validateOnStart bool
+	logger          *slog.Logger
 }
 
 func WithStorage(strategy Storage) func(s *fetcherStorage) {
@@ -33,12 +36,26 @@ func WithMetricsRecorder(recorder MetricsRecorder) func(opts *fetcherStorage) {
 	}
 }
 
+func WithValidation(enabled bool) func(opts *fetcherStorage) {
+	return func(opts *fetcherStorage) {
+		opts.validateOnStart = enabled
+	}
+}
+
+func WithLogger(logger *slog.Logger) func(opts *fetcherStorage) {
+	return func(opts *fetcherStorage) {
+		opts.logger = logger
+	}
+}
+
 func NewFetcherStorage(fetcher Fetcher, opts ...func(opts *fetcherStorage)) *fetcherStorage {
 	storage := &fetcherStorage{
-		fetcher:  fetcher,
-		interval: 1 * time.Minute,
-		strategy: memory.NewStorage(),
-		recorder: NewNoopRecorder(),
+		fetcher:         fetcher,
+		interval:        1 * time.Minute,
+		strategy:        memory.NewStorage(),
+		recorder:        NewNoopRecorder(),
+		validateOnStart: true,
+		logger:          slog.Default(),
 	}
 
 	for _, opt := range opts {
@@ -50,7 +67,10 @@ func NewFetcherStorage(fetcher Fetcher, opts ...func(opts *fetcherStorage)) *fet
 
 func (w *fetcherStorage) Start(ctx context.Context) error {
 	if err := w.sync(ctx); err != nil {
-		return err
+		if w.validateOnStart {
+			return err
+		}
+		w.logger.Warn("Initial sync failed, continuing", "error", err)
 	}
 
 	if w.fetcher.IsStatic() {

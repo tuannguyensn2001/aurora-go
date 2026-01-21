@@ -21,15 +21,15 @@ func TestEngineBootstrap(t *testing.T) {
 	e := newEngine()
 	e.bootstrap()
 
-	assert.Contains(t, e.operators, Equal)
-	assert.Contains(t, e.operators, NotEqual)
-	assert.Contains(t, e.operators, GreaterThan)
-	assert.Contains(t, e.operators, LessThan)
-	assert.Contains(t, e.operators, GreaterThanOrEqual)
-	assert.Contains(t, e.operators, LessThanOrEqual)
-	assert.Contains(t, e.operators, Contains)
-	assert.Contains(t, e.operators, In)
-	assert.Contains(t, e.operators, NotIn)
+	assert.Contains(t, e.operators, evaluator.Equal)
+	assert.Contains(t, e.operators, evaluator.NotEqual)
+	assert.Contains(t, e.operators, evaluator.GreaterThan)
+	assert.Contains(t, e.operators, evaluator.LessThan)
+	assert.Contains(t, e.operators, evaluator.GreaterThanOrEqual)
+	assert.Contains(t, e.operators, evaluator.LessThanOrEqual)
+	assert.Contains(t, e.operators, evaluator.Contains)
+	assert.Contains(t, e.operators, evaluator.In)
+	assert.Contains(t, e.operators, evaluator.NotIn)
 }
 
 func TestEngineRegisterOperator(t *testing.T) {
@@ -45,10 +45,10 @@ func TestEngineRegisterOperator(t *testing.T) {
 		return len(s1) > len(s2)
 	}
 
-	e.registerOperator("longerThan", customOperator)
-	assert.Contains(t, e.operators, Operator("longerThan"))
-	assert.True(t, e.operators[Operator("longerThan")]("hello world", "hi"))
-	assert.False(t, e.operators[Operator("longerThan")]("hi", "hello world"))
+	e.registerOperator(evaluator.Operator("longerThan"), customOperator)
+	assert.Contains(t, e.operators, evaluator.Operator("longerThan"))
+	assert.True(t, e.operators[evaluator.Operator("longerThan")]("hello world", "hi"))
+	assert.False(t, e.operators[evaluator.Operator("longerThan")]("hi", "hello world"))
 }
 
 func TestEvaluateParameterNoRules(t *testing.T) {
