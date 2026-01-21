@@ -6,48 +6,40 @@ import (
 	"time"
 
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
+	"github.com/tuannguyensn2001/aurora-go/experiment"
 )
 
-// ClientOptions contains configuration options for the Client.
 type ClientOptions struct {
 	Logger          *slog.Logger
 	MetricsRecorder MetricsRecorder
 }
 
-// ParameterOption is a functional option for GetParameter.
 type ParameterOption func(*parameterOptions)
 
 type parameterOptions struct {
 	strategy Storage
 }
 
-// WithStrategy sets a custom storage strategy for retrieving the parameter.
-// This is useful for use cases requiring strong consistency
-// instead of the default eventually consistent storage.
-//
-// Example:
-//
-//	customStorage := myCustomStorage{}
-//	client.GetParameter(ctx, "key", nil, WithStrategy(customStorage))
 func WithStrategy(s Storage) ParameterOption {
 	return func(o *parameterOptions) {
 		o.strategy = s
 	}
 }
 
-// Client is the main entry point for Aurora configuration management.
-// It provides methods to retrieve parameters and register custom operators.
 type Client struct {
-	storage  *fetcherStorage
-	engine   *engine
-	logger   *slog.Logger
-	recorder MetricsRecorder
+	storage          *fetcherStorage
+	engine           *engine
+	experimentEngine *experiment.Engine
+	logger           *slog.Logger
+	recorder         MetricsRecorder
 }
 
-// NewClient creates a new Aurora client with the given storage and options.
 func NewClient(storage *fetcherStorage, opts ClientOptions) *Client {
-	engine := newEngine()
-	engine.bootstrap()
+	eng := newEngine()
+	eng.bootstrap()
+
+	expEngine := experiment.NewEngine()
+	expEngine.Bootstrap()
 
 	logger := opts.Logger
 	if logger == nil {
@@ -60,27 +52,19 @@ func NewClient(storage *fetcherStorage, opts ClientOptions) *Client {
 	}
 
 	return &Client{
-		storage:  storage,
-		engine:   engine,
-		logger:   logger,
-		recorder: recorder,
+		storage:          storage,
+		engine:           eng,
+		experimentEngine: expEngine,
+		logger:           logger,
+		recorder:         recorder,
 	}
 }
 
-// Start initializes the client by starting the storage layer.
 func (c *Client) Start(ctx context.Context) error {
 	c.logger.Info("Starting Aurora client")
 	return c.storage.Start(ctx)
 }
 
-// GetParameter retrieves a parameter value based on the given attributes.
-// It evaluates rules and constraints to determine the appropriate value.
-//
-// By default, parameters are retrieved from the default storage (eventually consistent).
-// For strong consistency requirements, use WithStrategy to provide a custom storage:
-//
-//	customStorage := myCustomStorage{}
-//	client.GetParameter(ctx, "key", nil, WithStrategy(customStorage))
 func (c *Client) GetParameter(ctx context.Context, parameterName string, attribute *attribute, opts ...ParameterOption) *resolvedValue {
 	c.logger.Debug("Getting parameter", "parameter", parameterName)
 
@@ -90,26 +74,47 @@ func (c *Client) GetParameter(ctx context.Context, parameterName string, attribu
 		c.recorder.Histogram("get_parameter_latency", float64(duration), []string{})
 	}()
 
+	storageTag := "default"
 	var paramOpts parameterOptions
 	if len(opts) > 0 {
 		for _, opt := range opts {
 			opt(&paramOpts)
 		}
 	}
-
-	storageTag := "default"
 	if paramOpts.strategy != nil {
 		storageTag = "custom"
+	}
+
+	var strg Storage
+	if paramOpts.strategy != nil {
+		strg = paramOpts.strategy
+	} else {
+		strg = c.storage
+	}
+
+	if c.experimentEngine != nil {
+		experiments, err := strg.GetExperiments(ctx)
+		if err == nil && len(experiments) > 0 {
+			attrMap := make(map[string]any)
+			if attribute != nil {
+				for k, v := range attribute.vals {
+					attrMap[k] = v
+				}
+			}
+
+			result := c.experimentEngine.Evaluate(ctx, experiments, parameterName, attrMap)
+			if result.Matched {
+				value := result.Values[parameterName]
+				c.recorder.Count("experiment_matched", 1, []string{"experiment:" + result.ExperimentID, "variant:" + result.VariantKey})
+				return NewResolvedValue(value, true)
+			}
+		}
 	}
 
 	var config auroratype.Parameter
 	var err error
 
-	if paramOpts.strategy != nil {
-		config, err = paramOpts.strategy.Get(ctx, parameterName)
-	} else {
-		config, err = c.storage.Get(ctx, parameterName)
-	}
+	config, err = strg.Get(ctx, parameterName)
 
 	if err != nil {
 		c.logger.Error("Failed to get parameter config", "parameter", parameterName, "error", err)
@@ -128,19 +133,6 @@ func (c *Client) GetParameter(ctx context.Context, parameterName string, attribu
 	return result
 }
 
-// RegisterOperator allows users to register a custom operator.
-// The operator function takes two values (a, b) and returns a boolean result.
-//
-// Example:
-//
-//	client.RegisterOperator("startsWith", func(a, b any) bool {
-//	    strA, okA := a.(string)
-//	    strB, okB := b.(string)
-//	    if !okA || !okB {
-//	        return false
-//	    }
-//	    return strings.HasPrefix(strA, strB)
-//	})
 func (c *Client) RegisterOperator(name string, fn func(a, b any) bool) {
 	c.logger.Info("Registering custom operator", "operator", name)
 	c.engine.registerOperator(Operator(name), fn)

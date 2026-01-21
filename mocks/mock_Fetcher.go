@@ -53,6 +53,54 @@ func (_m *MockFetcher) Fetch(ctx context.Context) (map[string]auroratype.Paramet
 	return r0, r1
 }
 
+// FetchExperiments provides a mock function with given fields: ctx
+func (_m *MockFetcher) FetchExperiments(ctx context.Context) ([]auroratype.Experiment, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchExperiments")
+	}
+
+	var r0 []auroratype.Experiment
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]auroratype.Experiment, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []auroratype.Experiment); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]auroratype.Experiment)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// IsStatic provides a mock function with no fields
+func (_m *MockFetcher) IsStatic() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsStatic")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
 // MockFetcher_Fetch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Fetch'
 type MockFetcher_Fetch_Call struct {
 	*mock.Call
@@ -81,22 +129,32 @@ func (_c *MockFetcher_Fetch_Call) RunAndReturn(run func(context.Context) (map[st
 	return _c
 }
 
-// IsStatic provides a mock function with no fields
-func (_m *MockFetcher) IsStatic() bool {
-	ret := _m.Called()
+// MockFetcher_FetchExperiments_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FetchExperiments'
+type MockFetcher_FetchExperiments_Call struct {
+	*mock.Call
+}
 
-	if len(ret) == 0 {
-		panic("no return value specified for IsStatic")
-	}
+// FetchExperiments is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockFetcher_Expecter) FetchExperiments(ctx interface{}) *MockFetcher_FetchExperiments_Call {
+	return &MockFetcher_FetchExperiments_Call{Call: _e.mock.On("FetchExperiments", ctx)}
+}
 
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
+func (_c *MockFetcher_FetchExperiments_Call) Run(run func(ctx context.Context)) *MockFetcher_FetchExperiments_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
 
-	return r0
+func (_c *MockFetcher_FetchExperiments_Call) Return(_a0 []auroratype.Experiment, _a1 error) *MockFetcher_FetchExperiments_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockFetcher_FetchExperiments_Call) RunAndReturn(run func(context.Context) ([]auroratype.Experiment, error)) *MockFetcher_FetchExperiments_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // MockFetcher_IsStatic_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsStatic'

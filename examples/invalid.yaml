@@ -1,0 +1,62 @@
+# Invalid config file for testing validation
+# This file should fail validation
+
+# Error 1: parameter name is empty
+"": 
+  defaultValue: false
+  rules: []
+
+# Error 2: percentage out of range (> 100)
+badPercentage:
+  defaultValue: 1
+  rules:
+    - rolloutValue: 10
+      percentage: 150
+      hashAttribute: userID
+
+# Error 3: percentage without hashAttribute
+missingHashAttribute:
+  defaultValue: 1
+  rules:
+    - rolloutValue: 10
+      percentage: 50
+
+# Error 4: empty constraint field
+emptyField:
+  defaultValue: false
+  rules:
+    - rolloutValue: true
+      constraints:
+        - field:
+          operator: equal
+          value: US
+
+# Error 5: empty constraint operator
+emptyOperator:
+  defaultValue: false
+  rules:
+    - rolloutValue: true
+      constraints:
+        - field: country
+          operator:
+          value: US
+
+# Error 6: percentage below zero
+negativePercentage:
+  defaultValue: 1
+  rules:
+    - rolloutValue: 10
+      percentage: -10
+      hashAttribute: userID
+
+# Error 7: multiple errors in one rule
+multipleErrors:
+  defaultValue: false
+  rules:
+    - rolloutValue: true
+      percentage: 200
+      hashAttribute: ""
+      constraints:
+        - field:
+          operator:
+          value: test

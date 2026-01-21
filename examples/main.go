@@ -6,7 +6,6 @@ import (
 	"log"
 	"log/slog"
 	"os"
-	"strings"
 
 	aurora "github.com/tuannguyensn2001/aurora-go"
 	filefetcher "github.com/tuannguyensn2001/aurora-go/fetcher/file"
@@ -14,41 +13,38 @@ import (
 
 func main() {
 	opts := &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelInfo,
 	}
+
+	// Option 1: Backward compatible - experiments.yaml auto-derived from same directory as FilePath
 	client := aurora.NewClient(aurora.NewFetcherStorage(filefetcher.New(filefetcher.Options{
-		FilePath: "parameters.yaml",
+		FilePath:            "parameters.yaml",
+		ExperimentsFilePath: "experiments.yaml",
 	})), aurora.ClientOptions{
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, opts)),
 	})
 
-	// Register a custom operator for string prefix matching
-	client.RegisterOperator("startsWith", func(a, b any) bool {
-		strA, okA := a.(string)
-		strB, okB := b.(string)
-		if !okA || !okB {
-			return false
-		}
-		return strings.HasPrefix(strA, strB)
-	})
+	// Option 2: Explicit paths for parameters and experiments
+	// client := aurora.NewClient(aurora.NewFetcherStorage(filefetcher.New(filefetcher.Options{
+	//     FilePath:            "config/parameters.yaml",
+	//     ExperimentsFilePath: "config/experiments.yaml",
+	// })), aurora.ClientOptions{
+	//     Logger: slog.New(slog.NewJSONHandler(os.Stdout, opts)),
+	// })
 
-	// Register a custom operator for modulo checking
-	client.RegisterOperator("modulo", func(a, b any) bool {
-		// a should be divisible by b
-		numA, okA := a.(int)
-		numB, okB := b.(int)
-		if !okA || !okB || numB == 0 {
-			return false
-		}
-		return numA%numB == 0
-	})
+	// Option 3: Experiments only (no parameters file)
+	// client := aurora.NewClient(aurora.NewFetcherStorage(filefetcher.New(filefetcher.Options{
+	//     ExperimentsFilePath: "experiments.yaml",
+	// })), aurora.ClientOptions{
+	//     Logger: slog.New(slog.NewJSONHandler(os.Stdout, opts)),
+	// })
 
 	err := client.Start(context.Background())
 	if err != nil {
 		log.Fatalf("failed to start client: %v", err)
 	}
 
-	fmt.Println("=== Testing numberOfAttempts parameter ===")
+	fmt.Println("=== Testing parameters without experiment ===")
 	for i := 0; i < 10; i++ {
 		attribute := aurora.NewAttribute()
 		attribute.Set("subscription_plan", "premium")
@@ -57,22 +53,22 @@ func main() {
 		fmt.Printf("User %d: %d attempts\n", i, resolvedValue.Int(-1))
 	}
 
-	fmt.Println("\n=== Testing enableAuth parameter ===")
-	for i := 0; i < 5; i++ {
+	fmt.Println("\n=== Testing experiment parameters ===")
+	for i := 0; i < 10; i++ {
 		attribute := aurora.NewAttribute()
-		attribute.Set("country", "VN")
-		attribute.Set("age", 20+i)
+		attribute.Set("country", "US")
 		attribute.Set("userID", fmt.Sprintf("user_%d", i))
-		resolvedValue := client.GetParameter(context.Background(), "enableAuth", attribute)
-		fmt.Printf("User %d (age %d): auth=%v\n", i, 20+i, resolvedValue.Boolean(false))
+		resolvedValue := client.GetParameter(context.Background(), "checkoutButton", attribute)
+		if resolvedValue.Matched() {
+			fmt.Printf("User %d (experiment): checkoutButton=%v\n", i, resolvedValue.Value())
+		} else {
+			fmt.Printf("User %d (fallback): checkoutButton=%v\n", i, resolvedValue.String("default"))
+		}
+		resolvedValue = client.GetParameter(context.Background(), "titleText", attribute)
+		if resolvedValue.Matched() {
+			fmt.Printf("User %d (experiment): titleText=%v\n", i, resolvedValue.Value())
+		} else {
+			fmt.Printf("User %d (fallback): titleText=%v\n", i, resolvedValue.String("default"))
+		}
 	}
-
-	fmt.Println("\n=== Testing custom operators ===")
-	// Test with a parameter that uses custom operators (you would need to add this to parameters.yaml)
-	attribute := aurora.NewAttribute()
-	attribute.Set("email", "admin@example.com")
-	attribute.Set("count", 10)
-	resolvedValue := client.GetParameter(context.Background(), "customOperatorTest", attribute)
-	fmt.Printf("Custom operator test result: %v\n", resolvedValue.Boolean(false))
-
 }

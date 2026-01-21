@@ -2,12 +2,11 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
-	"github.com/spaolacci/murmur3"
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
+	"github.com/tuannguyensn2001/aurora-go/core/evaluator"
 )
 
 type engine struct {
@@ -53,81 +52,34 @@ func (e *engine) evaluateParameter(ctx context.Context, parameterName string, pa
 }
 
 func (e *engine) evaluateRule(ctx context.Context, parameterName string, rule auroratype.Rule, attribute *attribute) bool {
-	// Check if rule is effective (time-based check)
 	if rule.EffectiveAt != nil {
 		currentTime := time.Now().Unix()
 		if currentTime < *rule.EffectiveAt {
-			// Rule is not yet effective
 			return false
 		}
 	}
 
-	// First, check all constraints
 	for _, constraint := range rule.Constraints {
-		operator := e.operators[Operator(constraint.Operator)]
-		if operator == nil {
+		op := e.operators[Operator(constraint.Operator)]
+		if op == nil {
 			return false
 		}
-		if !operator(attribute.Get(constraint.Field), constraint.Value) {
+		if !op(attribute.Get(constraint.Field), constraint.Value) {
 			return false
 		}
 	}
 
-	// If constraints pass, check percentage rollout if configured
 	if rule.Percentage != nil && rule.HashAttribute != nil {
 		hashValue := attribute.Get(*rule.HashAttribute)
 		if hashValue == nil {
 			return false
 		}
 
-		// Calculate hash percentage
-		percentage := calculateHashPercentage(parameterName, hashValue, *rule.Percentage)
-		if !percentage {
+		hash := evaluator.CalculateHash(hashValue, parameterName)
+		if !evaluator.IsInPercentageRange(hash, *rule.Percentage) {
 			return false
 		}
 	}
 
 	return true
-}
-
-// calculateHashPercentage calculates if the hash of the value falls within the percentage range
-func calculateHashPercentage(parameterName string, value interface{}, percentage int) bool {
-	if percentage <= 0 {
-		return false
-	}
-	if percentage >= 100 {
-		return true
-	}
-
-	// Convert value to string for hashing
-	var valueStr string
-	switch v := value.(type) {
-	case string:
-		valueStr = v
-	case int, int8, int16, int32, int64:
-		valueStr = fmt.Sprintf("%d", v)
-	case uint, uint8, uint16, uint32, uint64:
-		valueStr = fmt.Sprintf("%d", v)
-	case float32, float64:
-		valueStr = fmt.Sprintf("%f", v)
-	default:
-		valueStr = fmt.Sprintf("%v", v)
-	}
-
-	// Combine parameterName and hashAttributeValue for hashing
-	// This ensures different parameters have independent rollouts
-	combinedStr := parameterName + ":" + valueStr
-
-	// Hash the combined value using Murmur3
-	hash := murmur3.Sum32([]byte(combinedStr))
-
-	// Use 10000 buckets for better precision (0.01% granularity)
-	const numBuckets = 10000
-	hashBucket := int(hash % numBuckets)
-
-	// Convert percentage (0-100) to bucket threshold (0-10000)
-	threshold := percentage * (numBuckets / 100)
-
-	// Check if hash bucket is less than the threshold
-	return hashBucket < threshold
 }

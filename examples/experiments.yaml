@@ -1,0 +1,42 @@
+experiments:
+  - id: "exp_001"
+    name: "Checkout Button Color Test"
+    parameters: ["checkoutButton", "titleText"]
+    hashAttribute: "userID"
+    populationSize: 100
+    priority: 1
+    status: "running"
+    startTime: 1768954779
+    endTime: 1768984779
+    constraints:
+      - field: country
+        operator: equal
+        value: US
+    variants:
+      - key: control
+        rollout: 50
+        values:
+          checkoutButton: "blue"
+          titleText: "Buy Now"
+      - key: treatment
+        rollout: 50
+        values:
+          checkoutButton: "green"
+          titleText: "Purchase"
+
+  - id: "exp_002"
+    name: "Feature Flag Test"
+    parameters: ["newFeature"]
+    hashAttribute: "sessionID"
+    populationSize: 100
+    priority: 2
+    status: "running"
+    variants:
+      - key: control
+        rollout: 0
+        values:
+          newFeature: false
+      - key: treatment
+        rollout: 100
+        values:
+          newFeature: true

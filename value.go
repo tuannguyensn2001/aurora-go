@@ -66,7 +66,6 @@ func (r *resolvedValue) Float(defaultValue float64) float64 {
 	if !r.matched {
 		return defaultValue
 	}
-
 	if r.value == nil {
 		return defaultValue
 	}
@@ -77,4 +76,12 @@ func (r *resolvedValue) Float(defaultValue float64) float64 {
 	}
 
 	return val
+}
+
+func (r *resolvedValue) Value() any {
+	return r.value
+}
+
+func (r *resolvedValue) Matched() bool {
+	return r.matched
 }

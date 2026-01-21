@@ -8,8 +8,6 @@ import (
 	"github.com/tuannguyensn2001/aurora-go/storage/memory"
 )
 
-// WrapperStorage combines a Fetcher and Storage to create a complete storage solution.
-// It fetches data from the Fetcher and stores it in the Storage.
 type fetcherStorage struct {
 	fetcher  Fetcher
 	interval time.Duration
@@ -35,12 +33,11 @@ func WithMetricsRecorder(recorder MetricsRecorder) func(opts *fetcherStorage) {
 	}
 }
 
-// NewWrapperStorage creates a new WrapperStorage that combines fetching and storage strategies.
 func NewFetcherStorage(fetcher Fetcher, opts ...func(opts *fetcherStorage)) *fetcherStorage {
 	storage := &fetcherStorage{
 		fetcher:  fetcher,
 		interval: 1 * time.Minute,
-		strategy: memory.NewStrategy(),
+		strategy: memory.NewStorage(),
 		recorder: NewNoopRecorder(),
 	}
 
@@ -51,7 +48,6 @@ func NewFetcherStorage(fetcher Fetcher, opts ...func(opts *fetcherStorage)) *fet
 	return storage
 }
 
-// Start initializes the storage by fetching data and starting background polling.
 func (w *fetcherStorage) Start(ctx context.Context) error {
 	if err := w.sync(ctx); err != nil {
 		return err
@@ -79,6 +75,20 @@ func (w *fetcherStorage) sync(ctx context.Context) error {
 		return err
 	}
 
+	experiments, err := w.fetcher.FetchExperiments(ctx)
+	if err != nil {
+		w.recorder.Count(MetricStorageSyncTotal, 1, []string{"status:error"})
+		return err
+	}
+
+	if experiments != nil {
+		err = w.strategy.SaveExperiments(ctx, experiments)
+		if err != nil {
+			w.recorder.Count(MetricStorageSyncTotal, 1, []string{"status:error"})
+			return err
+		}
+	}
+
 	w.recorder.Count(MetricStorageSyncTotal, 1, []string{"status:success"})
 	return nil
 }
@@ -97,7 +107,18 @@ func (w *fetcherStorage) poll(ctx context.Context) {
 	}
 }
 
-// Get retrieves a parameter from the storage.
 func (w *fetcherStorage) Get(ctx context.Context, parameterName string) (auroratype.Parameter, error) {
 	return w.strategy.Get(ctx, parameterName)
+}
+
+func (w *fetcherStorage) Save(ctx context.Context, config map[string]auroratype.Parameter) error {
+	return w.strategy.Save(ctx, config)
+}
+
+func (w *fetcherStorage) GetExperiments(ctx context.Context) ([]auroratype.Experiment, error) {
+	return w.strategy.GetExperiments(ctx)
+}
+
+func (w *fetcherStorage) SaveExperiments(ctx context.Context, experiments []auroratype.Experiment) error {
+	return w.strategy.SaveExperiments(ctx, experiments)
 }

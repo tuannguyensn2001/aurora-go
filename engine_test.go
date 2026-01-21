@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
+	"github.com/tuannguyensn2001/aurora-go/core/evaluator"
 )
 
 func TestNewEngine(t *testing.T) {
@@ -339,21 +340,25 @@ func TestCalculateHashPercentage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calculateHashPercentage("test_param", "test_value", tt.percentage)
+			hash := evaluator.CalculateHash("test_value", "test_param")
+			result := evaluator.IsInPercentageRange(hash, tt.percentage)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
 
 	t.Run("same value always returns same result", func(t *testing.T) {
-		result1 := calculateHashPercentage("test_param", "test_value", 50)
-		result2 := calculateHashPercentage("test_param", "test_value", 50)
+		hash1 := evaluator.CalculateHash("test_value", "test_param")
+		hash2 := evaluator.CalculateHash("test_value", "test_param")
+		result1 := evaluator.IsInPercentageRange(hash1, 50)
+		result2 := evaluator.IsInPercentageRange(hash2, 50)
 		assert.Equal(t, result1, result2)
 	})
 
 	t.Run("different values can have different results", func(t *testing.T) {
 		results := make(map[bool]int)
 		for i := 0; i < 100; i++ {
-			result := calculateHashPercentage("test_param", "user_"+string(rune('a'+i)), 50)
+			hash := evaluator.CalculateHash("user_"+string(rune('a'+i)), "test_param")
+			result := evaluator.IsInPercentageRange(hash, 50)
 			results[result]++
 		}
 		assert.True(t, results[true] > 0)
@@ -361,8 +366,10 @@ func TestCalculateHashPercentage(t *testing.T) {
 	})
 
 	t.Run("different parameters have independent rollouts", func(t *testing.T) {
-		result1 := calculateHashPercentage("param1", "user1", 100)
-		result2 := calculateHashPercentage("param2", "user1", 0)
+		hash1 := evaluator.CalculateHash("user1", "param1")
+		hash2 := evaluator.CalculateHash("user1", "param2")
+		result1 := evaluator.IsInPercentageRange(hash1, 100)
+		result2 := evaluator.IsInPercentageRange(hash2, 0)
 		assert.True(t, result1)
 		assert.False(t, result2)
 	})

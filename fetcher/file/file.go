@@ -12,28 +12,31 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Fetcher fetches configuration from a local file.
-type fetcher struct {
-	filePath string
-	static   bool
+type Fetcher struct {
+	filePath            string
+	experimentsFilePath string
+	static              bool
 }
 
-// Options configures the Fetcher.
 type Options struct {
-	FilePath string
-	Static   bool
+	FilePath            string
+	ExperimentsFilePath string
+	Static              bool
 }
 
-// NewFetcher creates a new file-based Fetcher.
-func New(opts Options) *fetcher {
-	return &fetcher{
-		filePath: opts.FilePath,
-		static:   opts.Static,
+func New(opts Options) *Fetcher {
+	return &Fetcher{
+		filePath:            opts.FilePath,
+		experimentsFilePath: opts.ExperimentsFilePath,
+		static:              opts.Static,
 	}
 }
 
-// Fetch retrieves configuration data from a local file.
-func (f *fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, error) {
+func (f *Fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, error) {
+	if f.filePath == "" {
+		return make(map[string]auroratype.Parameter), nil
+	}
+
 	file, err := os.Open(f.filePath)
 	if err != nil {
 		return nil, err
@@ -58,6 +61,37 @@ func (f *fetcher) Fetch(ctx context.Context) (map[string]auroratype.Parameter, e
 	return config, nil
 }
 
-func (f *fetcher) IsStatic() bool {
+func (f *Fetcher) FetchExperiments(ctx context.Context) ([]auroratype.Experiment, error) {
+	expFilePath := f.experimentsFilePath
+
+	if expFilePath == "" && f.filePath != "" {
+		dir := filepath.Dir(f.filePath)
+		expFilePath = filepath.Join(dir, "experiments.yaml")
+	}
+
+	if expFilePath == "" {
+		return nil, nil
+	}
+
+	data, err := os.ReadFile(expFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var config struct {
+		Experiments []auroratype.Experiment `yaml:"experiments"`
+	}
+
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, err
+	}
+
+	return config.Experiments, nil
+}
+
+func (f *Fetcher) IsStatic() bool {
 	return f.static
 }
