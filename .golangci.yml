@@ -1,10 +1,11 @@
+version: "2"
+
 run:
   timeout: 5m
-  issues-exit-code: 1
   tests: true
 
 linters:
-  enable:
+  enabled:
     - gofmt
     - goimports
     - staticcheck
@@ -13,7 +14,6 @@ linters:
     - dupl
     - goconst
     - gosec
-
-linter-settings:
-  goimports:
-    local-prefixes: github.com/tuannguyensn2001/aurora-go
+  settings:
+    goimports:
+      local-prefixes: github.com/tuannguyensn2001/aurora-go
