@@ -5,17 +5,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
 	mocks "github.com/tuannguyensn2001/aurora-go/mocks"
 )
 
 func TestNewClient(t *testing.T) {
+	ctx := context.Background()
 	mockFetcher := new(mocks.MockFetcher)
 	mockFetcher.On("IsStatic").Return(true)
-	mockFetcher.On("Fetch", mock.Anything).Return(make(map[string]auroratype.Parameter), nil)
-	mockFetcher.On("FetchExperiments", mock.Anything).Return(nil, nil)
+	mockFetcher.On("Fetch", ctx).Return(make(map[string]auroratype.Parameter), nil)
+	mockFetcher.On("FetchExperiments", ctx).Return(nil, nil)
 
 	client := NewClient(NewFetcherStorage(mockFetcher), ClientOptions{})
 
@@ -25,6 +25,7 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestClientGetParameter(t *testing.T) {
+	ctx := context.Background()
 	param := auroratype.Parameter{
 		DefaultValue: "default",
 		Rules: []auroratype.Rule{
@@ -39,11 +40,11 @@ func TestClientGetParameter(t *testing.T) {
 
 	mockFetcher := new(mocks.MockFetcher)
 	mockFetcher.On("IsStatic").Return(true)
-	mockFetcher.On("Fetch", mock.Anything).Return(map[string]auroratype.Parameter{"test_param": param}, nil)
-	mockFetcher.On("FetchExperiments", mock.Anything).Return(nil, nil)
+	mockFetcher.On("Fetch", ctx).Return(map[string]auroratype.Parameter{"test_param": param}, nil)
+	mockFetcher.On("FetchExperiments", ctx).Return(nil, nil)
 
 	s := NewFetcherStorage(mockFetcher)
-	err := s.Start(context.Background())
+	err := s.Start(ctx)
 	assert.NoError(t, err)
 
 	client := NewClient(s, ClientOptions{})
@@ -52,7 +53,7 @@ func TestClientGetParameter(t *testing.T) {
 		attr := NewAttribute()
 		attr.Set("env", "production")
 
-		result := client.GetParameter(context.Background(), "test_param", attr)
+		result := client.GetParameter(ctx, "test_param", attr)
 
 		assert.True(t, result.matched)
 		assert.Equal(t, "matched_value", result.value)
@@ -62,7 +63,7 @@ func TestClientGetParameter(t *testing.T) {
 		attr := NewAttribute()
 		attr.Set("env", "development")
 
-		result := client.GetParameter(context.Background(), "test_param", attr)
+		result := client.GetParameter(ctx, "test_param", attr)
 
 		assert.False(t, result.matched)
 		assert.Equal(t, "default", result.value)
@@ -70,31 +71,33 @@ func TestClientGetParameter(t *testing.T) {
 }
 
 func TestClientGetParameterStorageError(t *testing.T) {
+	ctx := context.Background()
 	mockFetcher := new(mocks.MockFetcher)
 	mockFetcher.On("IsStatic").Return(true)
-	mockFetcher.On("Fetch", mock.Anything).Return(nil, assert.AnError)
+	mockFetcher.On("Fetch", ctx).Return(nil, assert.AnError)
 
 	s := NewFetcherStorage(mockFetcher)
-	err := s.Start(context.Background())
+	err := s.Start(ctx)
 	assert.Error(t, err)
 
 	client := NewClient(s, ClientOptions{})
 
 	attr := NewAttribute()
-	result := client.GetParameter(context.Background(), "test_param", attr)
+	result := client.GetParameter(ctx, "test_param", attr)
 
 	assert.False(t, result.matched)
 	assert.Nil(t, result.value)
 }
 
 func TestClientRegisterOperator(t *testing.T) {
+	ctx := context.Background()
 	mockFetcher := new(mocks.MockFetcher)
 	mockFetcher.On("IsStatic").Return(true)
-	mockFetcher.On("Fetch", mock.Anything).Return(make(map[string]auroratype.Parameter), nil)
-	mockFetcher.On("FetchExperiments", mock.Anything).Return(nil, nil)
+	mockFetcher.On("Fetch", ctx).Return(make(map[string]auroratype.Parameter), nil)
+	mockFetcher.On("FetchExperiments", ctx).Return(nil, nil)
 
 	s := NewFetcherStorage(mockFetcher)
-	err := s.Start(context.Background())
+	err := s.Start(ctx)
 	assert.NoError(t, err)
 
 	client := NewClient(s, ClientOptions{})
@@ -124,11 +127,11 @@ func TestClientRegisterOperator(t *testing.T) {
 
 	mockFetcher2 := new(mocks.MockFetcher)
 	mockFetcher2.On("IsStatic").Return(true)
-	mockFetcher2.On("Fetch", mock.Anything).Return(map[string]auroratype.Parameter{"test_param": param}, nil)
-	mockFetcher2.On("FetchExperiments", mock.Anything).Return(nil, nil)
+	mockFetcher2.On("Fetch", ctx).Return(map[string]auroratype.Parameter{"test_param": param}, nil)
+	mockFetcher2.On("FetchExperiments", ctx).Return(nil, nil)
 
 	s2 := NewFetcherStorage(mockFetcher2)
-	err = s2.Start(context.Background())
+	err = s2.Start(ctx)
 	assert.NoError(t, err)
 	client2 := NewClient(s2, ClientOptions{})
 	client2.RegisterOperator("sameLength", customOperator)
@@ -137,7 +140,7 @@ func TestClientRegisterOperator(t *testing.T) {
 		attr := NewAttribute()
 		attr.Set("key", "abcd")
 
-		result := client2.GetParameter(context.Background(), "test_param", attr)
+		result := client2.GetParameter(ctx, "test_param", attr)
 
 		assert.True(t, result.matched)
 		assert.Equal(t, "same_length", result.value)
@@ -147,7 +150,7 @@ func TestClientRegisterOperator(t *testing.T) {
 		attr := NewAttribute()
 		attr.Set("key", "abc")
 
-		result := client2.GetParameter(context.Background(), "test_param", attr)
+		result := client2.GetParameter(ctx, "test_param", attr)
 
 		assert.False(t, result.matched)
 		assert.Equal(t, "default", result.value)
@@ -155,6 +158,7 @@ func TestClientRegisterOperator(t *testing.T) {
 }
 
 func TestClientGetParameterWithDefaultValue(t *testing.T) {
+	ctx := context.Background()
 	param := auroratype.Parameter{
 		DefaultValue: "fallback",
 		Rules:        []auroratype.Rule{},
@@ -162,17 +166,17 @@ func TestClientGetParameterWithDefaultValue(t *testing.T) {
 
 	mockFetcher := new(mocks.MockFetcher)
 	mockFetcher.On("IsStatic").Return(true)
-	mockFetcher.On("Fetch", mock.Anything).Return(map[string]auroratype.Parameter{"test_param": param}, nil)
-	mockFetcher.On("FetchExperiments", mock.Anything).Return(nil, nil)
+	mockFetcher.On("Fetch", ctx).Return(map[string]auroratype.Parameter{"test_param": param}, nil)
+	mockFetcher.On("FetchExperiments", ctx).Return(nil, nil)
 
 	s := NewFetcherStorage(mockFetcher)
-	err := s.Start(context.Background())
+	err := s.Start(ctx)
 	assert.NoError(t, err)
 
 	client := NewClient(s, ClientOptions{})
 
 	attr := NewAttribute()
-	result := client.GetParameter(context.Background(), "test_param", attr)
+	result := client.GetParameter(ctx, "test_param", attr)
 
 	assert.False(t, result.matched)
 	assert.Equal(t, "fallback", result.value)
