@@ -5,15 +5,18 @@ run:
   tests: true
 
 linters:
-  enabled:
-    - gofmt
-    - goimports
+  enable:
     - staticcheck
     - unused
     - errcheck
     - dupl
     - goconst
     - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
   settings:
     goimports:
       local-prefixes: github.com/tuannguyensn2001/aurora-go

@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
 	mocks "github.com/tuannguyensn2001/aurora-go/mocks"
 )

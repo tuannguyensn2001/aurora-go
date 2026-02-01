@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spaolacci/murmur3"
+
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
 )
 

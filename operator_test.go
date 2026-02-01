@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/tuannguyensn2001/aurora-go/core/evaluator"
 )
 

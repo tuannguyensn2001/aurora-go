@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/tuannguyensn2001/aurora-go/auroratype"
 	"github.com/tuannguyensn2001/aurora-go/core/evaluator"
 )
